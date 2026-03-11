@@ -1,16 +1,47 @@
-# dressedat
+# DressedAT 
 
-A new Flutter project.
+**DressedAT** is a mobile application that helps users track their outfits and avoid repeating the same dress in similar places or with the same people.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+* Upload daily outfit photos
+* Add descriptions, location, and people involved
+* Store outfit history securely
+* Detect previously worn similar outfits
+* Notify users to avoid repeating outfits in the same context
 
-A few resources to get you started if this is your first Flutter project:
+## Tech Stack
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+* **Flutter** – Mobile application development
+* **Supabase** – Backend, authentication, and database
+* **Riverpod / Providers** – State management
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## How It Works
+
+1. User uploads an outfit image with details.
+2. The app stores the information in the database.
+3. When a new outfit is uploaded, the system checks past entries.
+4. If a similar outfit was worn in a similar context, the app notifies the user.
+
+## Project Structure
+
+```
+lib/
+ ├ core/
+ ├ features/
+ │   ├ auth/
+ │   └ outfit/
+ ├ home/
+ ├ shared/
+ └ main.dart
+```
+
+## Future Improvements
+
+* AI-based outfit similarity detection
+* Image-based outfit recognition
+* Smart outfit recommendations
+
+## Author
+
+Muhammad Awais
