@@ -1,6 +1,6 @@
 {
-    "name": "dressedat",
-    "short_name": "dressedat",
+    "name": "outfit_repitition_detector",
+    "short_name": "outfit_repitition_detector",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
