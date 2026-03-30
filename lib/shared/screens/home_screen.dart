@@ -1,19 +1,8 @@
-import 'package:dressedat/features/outfit/data/outfit_repository.dart';
 import 'package:dressedat/features/outfit/data/outfit_model.dart';
+import 'package:dressedat/features/outfit/presentation/providers/outfit_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-final outfitRepositoryProvider = Provider((ref) => OutfitRepository());
-
-final outfitsProvider = FutureProvider<List<Outfit>>((ref) async {
-  final repo = ref.read(outfitRepositoryProvider);
-  final user = Supabase.instance.client.auth.currentUser;
-
-  if (user == null) throw Exception('User not logged in');
-
-  return repo.getUserOutfits(user.id);
-});
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -24,15 +13,10 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-
-      // App Bar
       appBar: AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        title: const Text(
-          'DressedAT',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('DressedAT', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
@@ -49,27 +33,16 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-
-      // Body
       body: outfitsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-
         error: (e, _) => Center(
-          child: Text(
-            e.toString(),
-            style: const TextStyle(color: Colors.white),
-          ),
+          child: Text(e.toString(), style: const TextStyle(color: Colors.white)),
         ),
-
         data: (outfits) {
-          if (outfits.isEmpty) {
-            return const _EmptyState();
-          }
+          if (outfits.isEmpty) return const _EmptyState();
 
           return RefreshIndicator(
-            onRefresh: () async {
-              ref.refresh(outfitsProvider);
-            },
+            onRefresh: () => ref.read(outfitsProvider.notifier).refresh(),
             child: GridView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: outfits.length,
@@ -80,21 +53,18 @@ class HomeScreen extends ConsumerWidget {
                 childAspectRatio: 0.75,
               ),
               itemBuilder: (context, index) {
-                final outfit = outfits[index];
-                return _OutfitCard(outfit: outfit);
+                return _OutfitCard(outfit: outfits[index]);
               },
             ),
           );
         },
       ),
-
-      // Add Outfit
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.white,
         child: const Icon(Icons.add, color: Colors.black),
         onPressed: () async {
           await Navigator.pushNamed(context, '/add-outfit');
-          ref.refresh(outfitsProvider);
+          ref.read(outfitsProvider.notifier).refresh();
         },
       ),
     );
@@ -124,19 +94,14 @@ class _OutfitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(context, '/outfit-detail', arguments: outfit);
-      },
+      onTap: () => Navigator.pushNamed(context, '/outfit-detail', arguments: outfit),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
-            // Image
             Positioned.fill(
               child: Image.network(outfit.imageUrl, fit: BoxFit.cover),
             ),
-
-            // Gradient Overlay
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -148,8 +113,6 @@ class _OutfitCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Info
             Positioned(
               bottom: 8,
               left: 8,
@@ -160,10 +123,7 @@ class _OutfitCard extends StatelessWidget {
                   if (outfit.location.isNotEmpty)
                     Text(
                       outfit.location,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   if (outfit.description.isNotEmpty)
                     Text(

@@ -1,18 +1,21 @@
 import 'dart:io';
+import 'package:dressedat/features/outfit/logic/similarity_service.dart';
+import 'package:dressedat/features/outfit/presentation/providers/outfit_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dressedat/features/outfit/data/outfit_model.dart';
 import 'package:dressedat/features/outfit/data/outfit_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AddOutfitScreen extends StatefulWidget {
+class AddOutfitScreen extends ConsumerStatefulWidget {
   const AddOutfitScreen({super.key});
 
   @override
-  State<AddOutfitScreen> createState() => _AddOutfitScreenState();
+  ConsumerState<AddOutfitScreen> createState() => _AddOutfitScreenState();
 }
 
-class _AddOutfitScreenState extends State<AddOutfitScreen> {
+class _AddOutfitScreenState extends ConsumerState<AddOutfitScreen> {
   final _locationController = TextEditingController();
   final _peopleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -20,7 +23,6 @@ class _AddOutfitScreenState extends State<AddOutfitScreen> {
   File? _image;
   bool _isLoading = false;
 
-  // Form selections
   String? _topColor;
   String? _bottomType;
   String? _outfitType;
@@ -34,17 +36,120 @@ class _AddOutfitScreenState extends State<AddOutfitScreen> {
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null) {
-      setState(() => _image = File(picked.path));
-    }
+    if (picked != null) setState(() => _image = File(picked.path));
+  }
+
+  /// Builds a temporary outfit from current form state for similarity checking.
+  /// When you upgrade to ML/image similarity later, just update SimilarityService
+  /// — this method and the rest of the flow stays the same.
+  Outfit _buildTempOutfit() {
+    return Outfit(
+      id: 'temp',
+      userId: '',
+      imageUrl: '',
+      description: _descriptionController.text.trim(),
+      location: _locationController.text.trim(),
+      people: _peopleController.text.trim(),
+      date: DateTime.now(),
+      topColor: _topColor,
+      bottomType: _bottomType,
+      outfitType: _outfitType,
+      colorTheme: _colorTheme,
+    );
   }
 
   Future<void> _saveOutfit() async {
     if (_image == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please select an image")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select an image")),
+      );
       return;
     }
 
+    // Check similarity before saving
+    final outfitsState = ref.read(outfitsProvider);
+    final existingOutfits = outfitsState.value ?? [];
+
+    if (existingOutfits.isNotEmpty) {
+      final tempOutfit = _buildTempOutfit();
+      final similarOutfits = SimilarityService().findSimilar(tempOutfit, existingOutfits);
+
+      if (similarOutfits.isNotEmpty && mounted) {
+        final shouldProceed = await _showSimilarityWarning(similarOutfits);
+        if (!shouldProceed) return;
+      }
+    }
+
+    await _uploadAndSave();
+  }
+
+  Future<bool> _showSimilarityWarning(List<Outfit> similarOutfits) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          '⚠️ Similar Outfit Detected',
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'You may have worn a similar outfit before:',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            ...similarOutfits.take(3).map((o) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(o.imageUrl, height: 50, width: 50, fit: BoxFit.cover),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (o.location.isNotEmpty)
+                          Text(o.location, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        if (o.people.isNotEmpty)
+                          Text(o.people, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )),
+            const SizedBox(height: 8),
+            const Text(
+              'Save anyway?',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save Anyway'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  Future<void> _uploadAndSave() async {
     setState(() => _isLoading = true);
 
     try {
@@ -53,14 +158,6 @@ class _AddOutfitScreenState extends State<AddOutfitScreen> {
       if (user == null) throw Exception("User not logged in");
 
       final imageUrl = await repo.uploadImage(_image!, user.id);
-
-      // Combine tags into description
-      final tags = [
-        if (_topColor != null) 'Top: $_topColor',
-        if (_bottomType != null) 'Bottom: $_bottomType',
-        if (_outfitType != null) 'Type: $_outfitType',
-        if (_colorTheme != null) 'Theme: $_colorTheme',
-      ].join(' · ');
 
       final outfit = Outfit(
         id: '',
@@ -78,10 +175,15 @@ class _AddOutfitScreenState extends State<AddOutfitScreen> {
 
       await repo.addOutfit(outfit);
 
+      // Refresh Riverpod state so home screen updates
+      await ref.read(outfitsProvider.notifier).refresh();
+
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -101,7 +203,6 @@ class _AddOutfitScreenState extends State<AddOutfitScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Picker
             GestureDetector(
               onTap: _pickImage,
               child: Container(
@@ -126,38 +227,25 @@ class _AddOutfitScreenState extends State<AddOutfitScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // Outfit Type Tags
             _SectionLabel(label: "Outfit Type"),
             _ChipSelector(options: _outfitTypes, selected: _outfitType, onSelected: (v) => setState(() => _outfitType = v)),
-
             const SizedBox(height: 16),
-
             _SectionLabel(label: "Top Color"),
             _ChipSelector(options: _topColors, selected: _topColor, onSelected: (v) => setState(() => _topColor = v)),
-
             const SizedBox(height: 16),
-
             _SectionLabel(label: "Bottom Type"),
             _ChipSelector(options: _bottomTypes, selected: _bottomType, onSelected: (v) => setState(() => _bottomType = v)),
-
             const SizedBox(height: 16),
-
             _SectionLabel(label: "Color Theme"),
             _ChipSelector(options: _colorThemes, selected: _colorTheme, onSelected: (v) => setState(() => _colorTheme = v)),
-
             const SizedBox(height: 16),
-
             _InputField(controller: _locationController, label: "Location / Event", hint: "Office, Wedding, Dinner", icon: Icons.location_on),
             const SizedBox(height: 12),
             _InputField(controller: _peopleController, label: "People Present", hint: "Ali, Sara, Team", icon: Icons.people),
             const SizedBox(height: 12),
             _InputField(controller: _descriptionController, label: "Extra Notes (optional)", hint: "Any extra details...", icon: Icons.notes),
-
             const SizedBox(height: 28),
-
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -173,7 +261,6 @@ class _AddOutfitScreenState extends State<AddOutfitScreen> {
                     : const Text("Save Outfit", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
-
             const SizedBox(height: 20),
           ],
         ),

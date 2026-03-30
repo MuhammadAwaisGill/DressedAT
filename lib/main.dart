@@ -7,6 +7,7 @@ import 'package:dressedat/shared/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'features/auth/data/auth_repository.dart';
 import 'shared/screens/splash_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dressedat/features/outfit/presentation/screens/add_outfit_screen.dart';
@@ -25,6 +26,7 @@ Future<void> main() async {
   }
 
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
+
   runApp(const ProviderScope(child: MyApp()));
 }
 

@@ -1,8 +1,6 @@
-import 'package:dressedat/features/auth/data/auth_repository.dart';
+import 'package:dressedat/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-final authProvider = Provider((ref) => AuthRepository());
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -20,29 +18,26 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> _signup() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      await ref
-          .read(authProvider)
-          .signUp(
+      await ref.read(authProvider).signUp(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
       if (!mounted) return;
-
       Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -57,8 +52,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         child: Column(
           children: [
             const SizedBox(height: 100),
-
-            // App Title
             const Text(
               'DressedAT',
               style: TextStyle(
@@ -68,9 +61,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 letterSpacing: 2,
               ),
             ),
-
             const SizedBox(height: 40),
-
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -78,20 +69,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 style: TextStyle(color: Colors.grey),
               ),
             ),
-
             const SizedBox(height: 40),
-
-            // Email
             TextField(
               controller: _emailController,
               style: const TextStyle(color: Colors.white),
               decoration: _inputDecoration('Email'),
               keyboardType: TextInputType.emailAddress,
             ),
-
             const SizedBox(height: 16),
-
-            // Password with toggle
             TextField(
               controller: _passwordController,
               obscureText: _obscurePassword,
@@ -102,18 +87,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     _obscurePassword ? Icons.visibility_off : Icons.visibility,
                     color: Colors.grey,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
             ),
-
             const SizedBox(height: 30),
-
-            // Signup Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -122,29 +100,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _isLoading
-                    ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-                    : const Text(
-                  'Sign Up',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Signup
             TextButton(
               onPressed: () => Navigator.pushNamed(context, '/login'),
               child: const Text(

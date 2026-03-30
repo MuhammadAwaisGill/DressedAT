@@ -1,8 +1,9 @@
-import 'package:dressedat/features/auth/data/auth_repository.dart';
+import 'package:dressedat/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-final authProvider = Provider((ref) => AuthRepository());
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -14,14 +15,17 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   bool _obscurePassword = true;
 
+  final supabase = Supabase.instance.client;
+
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
       return;
     }
 
@@ -32,10 +36,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -43,13 +50,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _googleLogin() async {
     setState(() => _isGoogleLoading = true);
-
     try {
-      await ref.read(authProvider).signInWithGoogle();
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+      GoogleSignIn signIn = GoogleSignIn.instance;
+
+      await signIn.initialize(
+        serverClientId: dotenv.env["WEB_CLIENT"],
+        clientId: dotenv.env["ANDROID_CLIENT"],
+      );
+
+      GoogleSignInAccount account = await signIn.authenticate();
+      String idToken = account.authentication.idToken ?? "";
+
+      final authorization =
+          await account.authorizationClient.authorizationForScopes(['email', 'profile']) ??
+              await account.authorizationClient.authorizeScopes(['email', 'profile']);
+
+      final result = await supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: authorization.accessToken,
+      );
+
+      if (result.user != null && result.session != null) {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -64,52 +93,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Column(
           children: [
             const SizedBox(height: 100),
-
             const Text(
               'DressedAT',
-              style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold, letterSpacing: 2),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 34,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
             ),
-
             const SizedBox(height: 40),
-
             const Align(
               alignment: Alignment.centerLeft,
-              child: Text('Welcome Back', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+              child: Text(
+                'Welcome Back',
+                style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+              ),
             ),
-
             const SizedBox(height: 6),
-
             const Align(
               alignment: Alignment.centerLeft,
               child: Text('Login to continue', style: TextStyle(color: Colors.grey)),
             ),
-
             const SizedBox(height: 40),
-
             TextField(
               controller: _emailController,
               style: const TextStyle(color: Colors.white),
               decoration: _inputDecoration('Email'),
               keyboardType: TextInputType.emailAddress,
             ),
-
             const SizedBox(height: 16),
-
             TextField(
               controller: _passwordController,
               obscureText: _obscurePassword,
               style: const TextStyle(color: Colors.white),
               decoration: _inputDecoration('Password').copyWith(
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey,
+                  ),
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
             ),
-
             const SizedBox(height: 30),
-
-            // Login Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -125,10 +153,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     : const Text('Login', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Divider
             Row(
               children: [
                 Expanded(child: Divider(color: Colors.grey[800])),
@@ -139,28 +164,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Expanded(child: Divider(color: Colors.grey[800])),
               ],
             ),
-
             const SizedBox(height: 16),
-
-            // Google Button
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
+              child: OutlinedButton(
                 onPressed: _isGoogleLoading ? null : _googleLogin,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   side: BorderSide(color: Colors.grey[700]!),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                icon: _isGoogleLoading
+                child: _isGoogleLoading
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Image.network('https://www.google.com/favicon.ico', height: 20, width: 20),
-                label: const Text('Continue with Google', style: TextStyle(color: Colors.white)),
+                    : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset("assets/icons/google-logo.png", height: 25),
+                    const SizedBox(width: 12),
+                    const Text('Continue with Google', style: TextStyle(color: Colors.white, fontSize: 15)),
+                  ],
+                ),
               ),
             ),
-
             const SizedBox(height: 20),
-
             TextButton(
               onPressed: () => Navigator.pushNamed(context, '/signup'),
               child: const Text("Don't have an account? Sign Up", style: TextStyle(color: Colors.grey)),
