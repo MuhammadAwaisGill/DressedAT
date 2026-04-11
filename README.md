@@ -1,16 +1,43 @@
-# outfit_repitition_detector
+# 👔 DressedAT — Your AI-Powered Digital Wardrobe
 
-A new Flutter project.
+### **Never repeat an outfit to the same place twice.**
 
-## Getting Started
+DressedAT is a sophisticated wardrobe management application designed for the modern professional. It goes beyond simple "closet logging" by implementing a tracking engine that remembers exactly what you wore, when you wore it, and who saw you in it. 
 
-This project is a starting point for a Flutter application.
+Built with **Flutter** and powered by **Riverpod**, this app demonstrates high-level state management and scalable mobile architecture.
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## ✨ Key Features
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- **Digital Closet:** Catalog your entire wardrobe with categorized tags (Formal, Casual, Winter, etc.).
+- **Smart Event Tracking:** Log outfits against specific events and locations.
+- **"Anti-Repeat" Logic:** Intelligent reminders and history checks to ensure outfit variety across different social circles.
+- **Cloud-Synced Identity:** Secure user authentication and real-time database integration (Supabase/Firebase).
+- **Advanced State Management:** Robust implementation using **Riverpod** for a reactive and bug-free user experience.
+
+---
+
+## 🛠️ Technical Stack & Architecture
+
+- **Frontend:** Flutter & Dart
+- **State Management:** **Riverpod** (Refactored from Provider for better testability and logic separation).
+- **Backend:** Supabase / Firebase (Authentication & Relational Database).
+- **Architecture:** Feature-first folder structure (Clean Architecture principles).
+- **UI/UX:** Modern, minimalist interface with a focus on speed and ease of logging.
+
+---
+
+## 🧠 Why DressedAT?
+
+This project was built to solve the "what should I wear?" fatigue while showcasing complex data relationships. 
+- **The Challenge:** Handling many-to-many relationships between *Garments*, *Outfits*, and *Events*.
+- **The Solution:** A reactive state model that updates globally whenever a new event is logged, ensuring the "Last Worn" metadata is always accurate.
+
+---
+
+## 🚀 Installation
+
+1. **Clone the repo:**
+   ```bash
+   git clone [https://github.com/MuhammadAwaisGill/DressedAT.git](https://github.com/MuhammadAwaisGill/DressedAT.git)
